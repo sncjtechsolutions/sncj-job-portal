@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WhatsApp Jobs — Job Notifications</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --glass: rgba(255,255,255,0.06);
+    }
+    body{font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+    /* small subtle card shadow */
+    .card-shadow{box-shadow: 0 6px 18px rgba(16,24,40,0.08);} 
+    /* custom scrollbar */
+    ::-webkit-scrollbar{height:10px;width:10px}
+    ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#ff7ab6,#7a5cff);border-radius:999px}
+  </style>
+</head>
+<body class="bg-gradient-to-br from-[#FFF7ED] via-[#FFEEFB] to-[#F0F9FF] min-h-screen text-slate-800">
+  <header class="max-w-6xl mx-auto p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-400 via-fuchsia-500 to-indigo-500 flex items-center justify-center text-white font-bold shadow-lg">W</div>
+      <div>
+        <h1 class="text-2xl font-extrabold">WhatsApp Jobs</h1>
+        <p class="text-sm text-slate-600">Curated job notifications — click to expand and read details.</p>
+      </div>
+    </div>
+    <div class="w-full sm:w-auto flex gap-3 items-center">
+      <input id="search" type="search" placeholder="Search jobs, companies, keywords" class="w-full sm:w-80 px-4 py-2 rounded-lg border border-transparent shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+      <button id="newJobBtn" class="px-4 py-2 bg-gradient-to-r from-[#7a5cff] to-[#ff7ab6] text-white rounded-lg font-semibold shadow hover:scale-[1.02] transition">Post Job</button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-6">
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- left column: filters -->
+      <aside class="lg:col-span-1 space-y-6">
+        <div class="p-4 rounded-2xl bg-white/70 backdrop-blur card-shadow">
+          <h3 class="font-semibold">Filters & Tags</h3>
+          <p class="text-sm text-slate-600">Narrow down notifications</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button class="tag-btn px-3 py-1 rounded-full text-sm border">All</button>
+            <button class="tag-btn px-3 py-1 rounded-full text-sm border">IT</button>
+            <button class="tag-btn px-3 py-1 rounded-full text-sm border">Banking</button>
+            <button class="tag-btn px-3 py-1 rounded-full text-sm border">Insurance</button>
+            <button class="tag-btn px-3 py-1 rounded-full text-sm border">Retail</button>
+            <button class="tag-btn px-3 py-1 rounded-full text-sm border">Remote</button>
+            <button class="tag-btn px-3 py-1 rounded-full text-sm border">Fresher</button>
+            <button class="tag-btn px-3 py-1 rounded-full text-sm border">Urgent</button>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white/70 backdrop-blur card-shadow">
+          <h3 class="font-semibold">Sort</h3>
+          <select id="sort" class="mt-2 w-full px-3 py-2 rounded-lg border">
+            <option value="new">Newest first</option>
+            <option value="old">Oldest first</option>
+            <option value="company">Company A→Z</option>
+          </select>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-gradient-to-r from-yellow-100 to-pink-50 card-shadow">
+          <h3 class="font-semibold">Pro tip</h3>
+          <p class="text-sm text-slate-700">Pin important notifications by clicking the pin icon, and use the search box to quickly find roles by skill or company.</p>
+        </div>
+      </aside>
+
+      <!-- main column: job list -->
+      <section class="lg:col-span-2 space-y-4">
+        <div id="jobsContainer" class="space-y-4"></div>
+
+        <!-- sample empty state -->
+        <div id="emptyState" class="hidden p-8 rounded-2xl bg-white/60 text-center card-shadow">
+          <h3 class="text-lg font-semibold">No notifications yet</h3>
+          <p class="text-sm text-slate-600">Post a job or try a different search term.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <!-- Post job modal (hidden by default) -->
+  <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center p-6">
+    <div class="absolute inset-0 bg-black/40" onclick="closeModal()"></div>
+    <form id="jobForm" class="relative w-full max-w-2xl bg-white rounded-2xl p-6 card-shadow z-10">
+      <h2 class="text-xl font-bold">Post a new notification</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+        <input id="title" placeholder="Job title" required class="px-3 py-2 border rounded-lg" />
+        <input id="company" placeholder="Company" required class="px-3 py-2 border rounded-lg" />
+        <input id="location" placeholder="Location (e.g. Hyderabad, Remote)" class="px-3 py-2 border rounded-lg" />
+        <input id="date" type="date" class="px-3 py-2 border rounded-lg" />
+      </div>
+      <textarea id="summary" rows="3" placeholder="Short summary (1-2 lines)" class="w-full mt-3 px-3 py-2 border rounded-lg"></textarea>
+      <textarea id="details" rows="6" placeholder="Full details: responsibilities, requirements, apply link, contact" class="w-full mt-3 px-3 py-2 border rounded-lg"></textarea>
+      <div class="flex items-center justify-between mt-4">
+        <div class="flex gap-2">
+          <input id="tagInput" placeholder="Comma-separated tags (IT,Remote)" class="px-3 py-2 border rounded-lg" />
+        </div>
+        <div class="flex gap-2">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg border">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-gradient-to-r from-[#7a5cff] to-[#ff7ab6] text-white font-semibold">Post</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <footer class="max-w-6xl mx-auto p-6 text-center text-sm text-slate-600">Made with ♥ for your WhatsApp group • Responsive • Lightweight</footer>
+
+  <script>
+    // Demo dataset: sample notifications
+    const sampleJobs = [
+      {
+        id: 1,
+        title: 'Senior Java Developer',
+        company: 'FinBank Technologies',
+        date: '2025-11-10',
+        location: 'Hyderabad / Remote',
+        summary: 'Exp: 8+ years — Core Java, Spring Boot, Microservices',
+        details: 'Requirements:\n- 8+ years experience with Java, Spring Boot\n- Worked on microservices and cloud\n- Strong SQL skills\nApply: https://example.com/apply or contact hr@finbank.com',
+        tags: ['Banking','IT','Urgent']
+      },
+      {
+        id: 2,
+        title: 'Business Analyst - Retail',
+        company: 'RetailMart',
+        date: '2025-11-09',
+        location: 'Bengaluru',
+        summary: '3-5 years — BA, SQL, stakeholder communication',
+        details: 'Role:\n- Gather requirements, create BRDs\n- Coordinate with product and dev teams\nApply: careers@retailmart.com',
+        tags: ['Retail']
+      },
+      {
+        id: 3,
+        title: 'Insurance Sales Executive',
+        company: 'SafeLife Insurance',
+        date: '2025-11-07',
+        location: 'Remote',
+        summary: 'Fresher friendly — target driven',
+        details: 'Responsibilities:\n- Generate leads, close policies\n- Incentives and training provided\nContact: recruiter@safelife.com',
+        tags: ['Insurance','Fresher','Remote']
+      }
+    ];
+
+    // state
+    let jobs = [...sampleJobs];
+    const jobsContainer = document.getElementById('jobsContainer');
+
+    function renderJobs(list){
+      jobsContainer.innerHTML = '';
+      if(!list.length){
+        document.getElementById('emptyState').classList.remove('hidden');
+        return;
+      } else document.getElementById('emptyState').classList.add('hidden');
+
+      list.forEach(job => {
+        const card = document.createElement('article');
+        card.className = 'rounded-2xl p-4 bg-white/80 backdrop-blur card-shadow border';
+        card.innerHTML = `
+          <header class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-300 to-indigo-400 flex items-center justify-center text-white font-bold">${job.company.charAt(0)}</div>
+              <div>
+                <h3 class="text-lg font-semibold">${escapeHTML(job.title)}</h3>
+                <div class="text-sm text-slate-600">${escapeHTML(job.company)} • ${escapeHTML(job.location)}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-xs text-slate-500 mr-3">${job.date}</div>
+              <button class="pin-btn p-2 rounded-lg" title="Pin this notification">📌</button>
+              <button class="toggle-btn px-3 py-2 rounded-lg bg-gradient-to-r from-[#7a5cff] to-[#ff7ab6] text-white">Read</button>
+            </div>
+          </header>
+          <p class="mt-3 text-sm text-slate-700">${escapeHTML(job.summary)}</p>
+          <div class="mt-3 job-details hidden whitespace-pre-wrap text-sm text-slate-700 border-t pt-3">${escapeHTML(job.details)}</div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            ${job.tags.map(t => `<span class="px-3 py-1 text-xs rounded-full bg-indigo-50 border text-indigo-700">${escapeHTML(t)}</span>`).join('')}
+          </div>
+        `;
+
+        // events
+        const readBtn = card.querySelector('.toggle-btn');
+        const details = card.querySelector('.job-details');
+        readBtn.addEventListener('click', ()=>{
+          details.classList.toggle('hidden');
+          readBtn.textContent = details.classList.contains('hidden') ? 'Read' : 'Hide';
+          // smooth scroll into view when opening
+          if(!details.classList.contains('hidden')) details.scrollIntoView({behavior:'smooth',block:'nearest'});
+        });
+
+        const pinBtn = card.querySelector('.pin-btn');
+        pinBtn.addEventListener('click', ()=>{
+          card.classList.toggle('border-yellow-400');
+          card.classList.toggle('ring-2');
+          card.classList.toggle('ring-yellow-200');
+        });
+
+        jobsContainer.appendChild(card);
+      });
+    }
+
+    // helpers
+    function escapeHTML(str){
+      if(!str) return '';
+      return String(str).replace(/[&<>"']/g, function(s){
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[s];
+      });
+    }
+
+    // search
+    document.getElementById('search').addEventListener('input', (e)=>{
+      const q = e.target.value.toLowerCase().trim();
+      const filtered = jobs.filter(j => (
+        j.title.toLowerCase().includes(q) ||
+        j.company.toLowerCase().includes(q) ||
+        j.summary.toLowerCase().includes(q) ||
+        j.tags.join(',').toLowerCase().includes(q)
+      ));
+      renderJobs(filtered);
+    });
+
+    // sort
+    document.getElementById('sort').addEventListener('change', (e)=>{
+      if(e.target.value === 'new') jobs.sort((a,b)=> new Date(b.date) - new Date(a.date));
+      else if(e.target.value === 'old') jobs.sort((a,b)=> new Date(a.date) - new Date(b.date));
+      else if(e.target.value === 'company') jobs.sort((a,b)=> a.company.localeCompare(b.company));
+      renderJobs(jobs);
+    });
+
+    // tags filter
+    document.querySelectorAll('.tag-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const tag = btn.textContent.trim();
+        document.querySelectorAll('.tag-btn').forEach(x=>x.classList.remove('bg-indigo-50'));
+        btn.classList.add('bg-indigo-50');
+        if(tag === 'All') renderJobs(jobs);
+        else renderJobs(jobs.filter(j => j.tags.map(t=>t.toLowerCase()).includes(tag.toLowerCase())));
+      });
+    });
+
+    // modal open/close
+    document.getElementById('newJobBtn').addEventListener('click', ()=>{
+      document.getElementById('modal').classList.remove('hidden');
+      document.getElementById('modal').classList.add('flex');
+    });
+    function closeModal(){
+      document.getElementById('modal').classList.add('hidden');
+      document.getElementById('modal').classList.remove('flex');
+    }
+    window.closeModal = closeModal;
+
+    // form submit (adds to the top)
+    document.getElementById('jobForm').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const newJob = {
+        id: Date.now(),
+        title: document.getElementById('title').value || 'Untitled',
+        company: document.getElementById('company').value || 'Unknown',
+        date: document.getElementById('date').value || new Date().toISOString().slice(0,10),
+        location: document.getElementById('location').value || 'Remote',
+        summary: document.getElementById('summary').value || '',
+        details: document.getElementById('details').value || '',
+        tags: (document.getElementById('tagInput').value || '').split(',').map(s=>s.trim()).filter(Boolean)
+      };
+      jobs.unshift(newJob);
+      renderJobs(jobs);
+      closeModal();
+      // reset form
+      e.target.reset();
+    });
+
+    // initial render
+    renderJobs(jobs);
+  </script>
+</body>
+</html>
