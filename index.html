@@ -145,6 +145,36 @@
       background: #ffffff;
     }
 
+    /* Stats (visitor counter) */
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 8px 0 12px;
+    }
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-bg);
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .stat-icon {
+      font-size: 18px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      margin-left: 4px;
+    }
+
     /* Filters & Search */
     .filters {
       display: grid;
@@ -225,9 +255,14 @@
       opacity: 0.4;
       cursor: default;
     }
+
+    /* Temporarily hide WhatsApp section */
+    #whatsapp {
+      display: none;
+    }
   </style>
 </head>
-<body>
+<body class="dark">
 
 <header>
   <div class="left">
@@ -244,10 +279,10 @@
 </header>
 
 <main>
-<section id="updates">
+  <section id="updates">
     <h2>Latest Job Updates</h2>
     <p>Use search & filters to narrow down relevant roles.</p>
-
+ 
     <!-- Filters -->
     <div class="filters">
       <div>
@@ -276,6 +311,14 @@
           <option value="">All</option>
         </select>
       </div>
+      <div>
+        <label for="dateFilter">Posting Date</label>
+        <select id="dateFilter">
+          <option value="">All</option>
+          <option value="last7">Last 7 days</option>
+          <option value="last30">Last 30 days</option>
+        </select>
+      </div>
     </div>
 
     <!-- Job list -->
@@ -289,6 +332,7 @@
     </div>
 
   </section>
+
   <!-- Upload Resume Section -->
   <section id="resume">
     <h2>Upload Your Resume</h2>
@@ -299,8 +343,20 @@
        📤 Upload Resume
     </a>
   </section>
+<!-- Visitor Stats -->
+   
 
-  <!-- WhatsApp Group Section -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div>
+          <div class="stat-label">Visitors</div>
+          <div class="stat-value" id="visitorCount">--</div>
+        </div>
+      </div>
+    </div>
+
+  <!-- WhatsApp Group Section (hidden via CSS) -->
   <section id="whatsapp">
     <h2>Join WhatsApp Community</h2>
     <p>Get daily job updates, fresher drives and internship alerts directly in our community group.</p>
@@ -316,13 +372,30 @@
         alt="WhatsApp Group QR Code">
     </div>
   </section>
-
-  <!-- Auto Job Updates Section -->
-  
-
-</main>
-
 <script>
+  /* -------------------------
+     GOOGLE SCRIPT COUNTER
+     ------------------------- */
+
+  const COUNTER_URL = "YOUR_GOOGLE_SCRIPT_DEPLOYED_URL_HERE";  
+  // Example format after deployment:
+  // https://script.google.com/macros/s/AKfycbxxxxxxxxxxxxxxxxxxxxxxxxxxxx/exec
+
+  async function loadVisitorCount() {
+    try {
+      const res = await fetch(COUNTER_URL);
+      const data = await res.json();
+      document.getElementById("visitorCount").textContent = data.count || "--";
+    } catch (e) {
+      console.error("Error loading counter:", e);
+      document.getElementById("visitorCount").textContent = "--";
+    }
+  }
+
+  /* -------------------------
+     MAIN JOB PORTAL LOGIC
+     ------------------------- */
+
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw5fl2nlHuGgR-2tPqMfaxX5cykoRh08vVRARtf7RU_IeEtDzdx91ChVr-PML9hq3hq/exec";
 
   let allJobs = [];
@@ -341,7 +414,9 @@
   const companyFilterEl = document.getElementById("companyFilter");
   const locationFilterEl = document.getElementById("locationFilter");
   const expFilterEl = document.getElementById("expFilter");
+  const dateFilterEl = document.getElementById("dateFilter");
 
+  /* LOAD JOBS */
   async function loadJobs() {
     jobListEl.textContent = "Loading jobs...";
     try {
@@ -356,6 +431,7 @@
     }
   }
 
+  /* BUILD FILTER DROPDOWNS */
   function buildFilterOptions(jobs) {
     const companies = new Set();
     const locations = new Set();
@@ -373,40 +449,63 @@
   }
 
   function fillSelect(selectEl, valuesSet) {
-    const current = selectEl.value;
-    while (selectEl.options.length > 1) {
-      selectEl.remove(1);
-    }
+    while (selectEl.options.length > 1) selectEl.remove(1);
     Array.from(valuesSet).sort().forEach(v => {
       const opt = document.createElement("option");
       opt.value = v;
       opt.textContent = v;
       selectEl.appendChild(opt);
     });
-    if ([...selectEl.options].some(o => o.value === current)) {
-      selectEl.value = current;
-    }
   }
 
+  /* DATE PARSER */
+  function parseDateFlexible(str) {
+    if (!str) return null;
+    const direct = new Date(str);
+    if (!isNaN(direct)) return direct;
+    const parts = String(str).split(/[-\\/]/);
+    if (parts.length === 3) {
+      let [d, m, y] = parts.map(p => parseInt(p, 10));
+      if (y < 100) y += 2000;
+      return new Date(y, m - 1, d);
+    }
+    return null;
+  }
+
+  /* APPLY FILTERS */
   function applyFilters() {
-    const titleTerm = titleFilterEl.value.trim().toLowerCase();
-    const skillTerm = skillsFilterEl.value.trim().toLowerCase();
-    const companyVal = companyFilterEl.value;
-    const locationVal = locationFilterEl.value;
+    const titleTerm = titleFilterEl.value.toLowerCase().trim();
+    const skillsTerm = skillsFilterEl.value.toLowerCase().trim();
+    const compVal = companyFilterEl.value;
+    const locVal = locationFilterEl.value;
     const expVal = expFilterEl.value;
+    const dateVal = dateFilterEl.value;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
 
     filteredJobs = allJobs.filter(job => {
-      const title = String(job["Job Title"] || "").toLowerCase();
-      const skills = String(job["Skills"] || "").toLowerCase();
-      const company = String(job["Company"] || "");
-      const location = String(job["Location"] || "");
-      const exp = String(job["Experience"] || "");
+      const title = (job["Job Title"] || "").toLowerCase();
+      const skills = (job["Skills"] || "").toLowerCase();
+      const company = job["Company"] || "";
+      const location = job["Location"] || "";
+      const exp = job["Experience"] || "";
+      const datePosted = job["Date Posted"] || "";
+      const jobDate = parseDateFlexible(datePosted);
 
       if (titleTerm && !title.includes(titleTerm)) return false;
-      if (skillTerm && !skills.includes(skillTerm)) return false;
-      if (companyVal && company !== companyVal) return false;
-      if (locationVal && location !== locationVal) return false;
+      if (skillsTerm && !skills.includes(skillsTerm)) return false;
+      if (compVal && company !== compVal) return false;
+      if (locVal && location !== locVal) return false;
       if (expVal && exp !== expVal) return false;
+
+      if (dateVal === "last7" || dateVal === "last30") {
+        if (!jobDate) return false;
+        jobDate.setHours(0, 0, 0, 0);
+        const diff = (today - jobDate) / (1000 * 60 * 60 * 24);
+        const limit = dateVal === "last7" ? 7 : 30;
+        if (diff < 0 || diff > limit) return false;
+      }
 
       return true;
     });
@@ -415,6 +514,7 @@
     renderPage();
   }
 
+  /* RENDER PAGE */
   function renderPage() {
     jobListEl.innerHTML = "";
 
@@ -425,73 +525,54 @@
     }
 
     const totalPages = Math.ceil(filteredJobs.length / pageSize);
-    if (currentPage > totalPages) currentPage = totalPages;
-
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
     const pageJobs = filteredJobs.slice(start, end);
 
     pageJobs.forEach(job => {
       const details = document.createElement("details");
-      const title = job["Job Title"] || "";
-      const company = job["Company"] || "";
-      const location = job["Location"] || "";
-      const skills = job["Skills"] || "";
-      const exp = job["Experience"] || "";
-      const link = job["Apply Link"] || "";
+
+      const sendResume = job["Gmail"]
+        ? `<a href="mailto:${job["Gmail"]}">${job["Gmail"]}</a>`
+        : "Not provided";
 
       details.innerHTML = `
-        <summary>🔹 ${escapeHtml(title)} – ${escapeHtml(company)}</summary>
-        <p><strong>Location:</strong> ${escapeHtml(location)}</p>
-        <p><strong>Skills:</strong> ${escapeHtml(skills)}</p>
-        <p><strong>Experience:</strong> ${escapeHtml(exp)}</p>
-        <p><strong>Apply:</strong> <a href="${escapeAttr(link)}" target="_blank">${escapeHtml(link)}</a></p>
+        <summary>🔹 ${job["Job Title"] || ""} – ${job["Company"] || ""}</summary>
+        <p><strong>Location:</strong> ${job["Location"] || ""}</p>
+        <p><strong>Skills:</strong> ${job["Skills"] || ""}</p>
+        <p><strong>Experience:</strong> ${job["Experience"] || ""}</p>
+        <p><strong>Contact Number:</strong> ${job["Mobile Number"] || "Not provided"}</p>
+        <p><strong>Send Resume:</strong> ${sendResume}</p>
+        <p><strong>Date Posted:</strong> ${job["Date Posted"] || ""}</p>
+        <p><strong>Apply:</strong> <a href="${job["Apply Link"] || "#"}" target="_blank">${job["Apply Link"] || ""}</a></p>
       `;
       jobListEl.appendChild(details);
     });
 
+    pageInfoEl.textContent = `Page ${currentPage} of ${totalPages}`;
     paginationEl.style.display = totalPages > 1 ? "flex" : "none";
-    pageInfoEl.textContent = `Page ${currentPage} of ${totalPages} • ${filteredJobs.length} jobs`;
 
     prevBtn.disabled = currentPage === 1;
     nextBtn.disabled = currentPage === totalPages;
   }
 
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-  function escapeAttr(str) {
-    return String(str).replace(/"/g, "&quot;");
-  }
-
-  prevBtn.addEventListener("click", () => {
+  prevBtn.onclick = () => {
     if (currentPage > 1) {
       currentPage--;
       renderPage();
     }
-  });
-  nextBtn.addEventListener("click", () => {
+  };
+  nextBtn.onclick = () => {
     const totalPages = Math.ceil(filteredJobs.length / pageSize);
     if (currentPage < totalPages) {
       currentPage++;
       renderPage();
     }
-  });
+  };
 
-  // Attach filter listeners
-  [titleFilterEl, skillsFilterEl].forEach(inp =>
-    inp.addEventListener("input", () => applyFilters())
-  );
-  [companyFilterEl, locationFilterEl, expFilterEl].forEach(sel =>
-    sel.addEventListener("change", () => applyFilters())
-  );
-
-  // Dark mode toggle
+  /* DARK MODE */
   const darkToggle = document.getElementById("darkToggle");
+
   function setTheme(dark) {
     if (dark) {
       document.body.classList.add("dark");
@@ -501,14 +582,20 @@
       localStorage.setItem("sncj_theme", "light");
     }
   }
-  const savedTheme = localStorage.getItem("sncj_theme");
-  if (savedTheme === "dark") setTheme(true);
 
-  darkToggle.addEventListener("click", () => {
+  const storedTheme = localStorage.getItem("sncj_theme");
+  if (!storedTheme) {
+    setTheme(true); // default dark
+  } else {
+    setTheme(storedTheme === "dark");
+  }
+
+  darkToggle.onclick = () => {
     setTheme(!document.body.classList.contains("dark"));
-  });
+  };
 
-  // Load jobs on page load
+  /* INIT */
+  loadVisitorCount();
   loadJobs();
 </script>
 
